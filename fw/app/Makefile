@@ -1,5 +1,5 @@
 # name of your application
-APPLICATION = an-br
+APPLICATION = rethos-br
 
 # If no BOARD is found in the environment, use this default:
 BOARD = samr21-xpro
@@ -27,6 +27,7 @@ endif
 # Include packages that pull up and auto-init the link layer.
 # NOTE: 6LoWPAN will be included if IEEE802.15.4 devices are present
 USEMODULE += gnrc_netdev_default
+USEMODULE += netdev2_eth
 USEMODULE += auto_init_gnrc_netif
 # Specify the mandatory networking modules for 6LoWPAN border router
 USEMODULE += gnrc_sixlowpan_border_router_default
@@ -43,8 +44,8 @@ USEMODULE += ps
 USEMODULE += gnrc_uhcpc
 
 # Set a custom 802.15.4 channel if needed
-DEFAULT_CHANNEL = 25
-CFLAGS += -DDEFAULT_CHANNEL=$(DEFAULT_CHANNEL)
+DEFAULT_CHANNEL = 26
+CFLAGS += -DIEEE802154_DEFAULT_CHANNEL=$(DEFAULT_CHANNEL)
 
 # Comment this out to disable code in RIOT that does safety checking
 # which is not needed in a production environment but helps in the

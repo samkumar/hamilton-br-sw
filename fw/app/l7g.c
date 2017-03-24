@@ -44,7 +44,7 @@ void _handle_incoming_pkt(gnrc_pktsnip_t *p)
   shdr.rssi = nif->rssi;
   shdr.lqi = nif->lqi;
   memcpy(&shdr.srcip[0], &ip->src.u8[0], 16);
-  shdr.recv_time = xtimer_now64();
+  shdr.recv_time = xtimer_now_usec64();
   shdr.len = p->size;
   char* payload = (char *)p->data;
   rethos_start_frame(&ethos, (uint8_t*)&shdr, sizeof(staging_hdr_t), CHANNEL_L7G, RETHOS_FRAME_TYPE_DATA);
@@ -61,7 +61,8 @@ void *l7g_main(void *a)
     reply.content.value = -ENOTSUP;
     msg_init_queue(_msg_q, Q_SZ);
     gnrc_pktsnip_t *pkt = NULL;
-    gnrc_netreg_entry_t me_reg = { .demux_ctx = 4747, .pid = thread_getpid() };
+    kernel_pid_t me_pid = thread_getpid();
+    gnrc_netreg_entry_t me_reg = GNRC_NETREG_ENTRY_INIT_PID(4747, me_pid);
     gnrc_netreg_register(GNRC_NETTYPE_UDP, &me_reg);
     while (1) {
         msg_receive(&msg);

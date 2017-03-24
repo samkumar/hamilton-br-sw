@@ -58,7 +58,7 @@ uint64_t last_hb;
 void heartbeat_callback(ethos_t *dev, uint8_t channel, const uint8_t *data, uint16_t length)
 {
   if (length >= 4) {
-    last_hb = xtimer_now64();
+    last_hb = xtimer_now_usec64();
     wan_status = data[1];
   }
 }
@@ -110,7 +110,7 @@ int main(void)
       int interval = count % 12;
       xtimer_usleep(100000U);
 
-      if (xtimer_now64() - last_hb < MAX_HB_TIME) {
+      if (xtimer_now_usec64() - last_hb < MAX_HB_TIME) {
         //Heartbeats ok
         gpio_set(D3_PIN);
         switch(wan_status) {
@@ -153,7 +153,7 @@ int main(void)
       if (count % 5 == 0)
       {
         hb.type = HB_TYPE_MCU_TO_PI;
-        hb.uptime = xtimer_now64();
+        hb.uptime = xtimer_now_usec64();
         hb.rx_crc_fail = ethos.stats_rx_cksum_fail;
         hb.rx_bytes = ethos.stats_rx_bytes;
         hb.rx_frames = ethos.stats_rx_frames;
