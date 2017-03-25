@@ -21,12 +21,29 @@ extern ethos_t ethos;
 extern const uint8_t ipv6_addr[16];
 extern const uint8_t ipv6_prefix_bytes;
 
-static gnrc_pktsnip_t* prep_ipv6_hdr(gnrc_pktsnip_t* ipv6_read_only)
+static gnrc_pktsnip_t* prep_ipv6_hdr(gnrc_pktsnip_t** pkt, gnrc_pktsnip_t* ipv6_read_only)
 {
-    gnrc_pktsnip_t* ipv6 = gnrc_pktbuf_start_write(ipv6_read_only);
-    if (ipv6 == NULL) {
+    gnrc_pktsnip_t* p = *pkt;
+    p = gnrc_pktbuf_start_write(p);
+    if (p == NULL) {
         return NULL;
     }
+    *pkt = p;
+    gnrc_pktsnip_t* prev = p;
+    p = p->next;
+
+    /* Need write access for everything up to and including the IPv6 header. */
+    while (p != ipv6_read_only->next) {
+        p = gnrc_pktbuf_start_write(p);
+        if (p == NULL) {
+            return NULL;
+        }
+        prev->next = p; // prev already write-protected so this is OK
+        prev = p;
+        p = p->next;
+    }
+
+    gnrc_pktsnip_t* ipv6 = prev;
     gnrc_pktsnip_t* payload = ipv6->next;
 
     ipv6_hdr_t *hdr = ipv6->data;
@@ -114,13 +131,12 @@ void* br_main(void *a)
                     gnrc_pktbuf_release(pkt);
                     break;
                 }
-                ipv6 = prep_ipv6_hdr(ipv6_read_only);
+                ipv6 = prep_ipv6_hdr(&pkt, ipv6_read_only);
                 if (ipv6 == NULL) {
                     gnrc_pktbuf_release(pkt);
                     break;
                 }
                 send_upstream(ipv6);
-                gnrc_pktbuf_release(ipv6);
                 gnrc_pktbuf_release(pkt);
                 break;
             case GNRC_NETAPI_MSG_TYPE_RCV:

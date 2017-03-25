@@ -76,6 +76,9 @@ void heartbeat_callback(ethos_t *dev, uint8_t channel, uint8_t *data, uint16_t l
 void downlink_callback(ethos_t* dev, uint8_t channel, uint8_t* data, uint16_t length)
 {
     gnrc_pktsnip_t* pkt = gnrc_pktbuf_add(NULL, data, length, GNRC_NETTYPE_IPV6);
+    if (pkt == NULL) {
+        return;
+    }
     if (gnrc_netapi_dispatch_receive(GNRC_NETTYPE_IPV6, GNRC_NETREG_DEMUX_CTX_ALL, pkt) == 0) {
         gnrc_pktbuf_release(pkt);
     }
