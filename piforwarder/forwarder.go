@@ -305,7 +305,9 @@ func ProcessDownlink(rawsocket int, rethos *net.UnixConn) {
 		if err != nil {
 			fmt.Printf("raw socket: recvfom: error: %v\n", err)
 		}
-		packet := packetbuffer[:n]
+
+		/* Need to remove ethernet header */
+		packet := packetbuffer[14 : n-2]
 
 		/* Can't be a valid IPv6 packet if its length is shorter than an IPv6
 		 * header.
@@ -410,6 +412,15 @@ func main() {
 		die()
 	}
 
-	go ProcessDownlink(rawfd, rethosconn)
+	/* Raw sockets aren't enough for receiving packets, since that ties me to
+	 * only one IP protocol, whereas I want to forward all IP packets.
+	 */
+	packetfd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, syscall.ETH_P_IPV6)
+	if err != nil {
+		fmt.Printf("packet socket: error: %v\n", err)
+		die()
+	}
+
+	go ProcessDownlink(packetfd, rethosconn)
 	ProcessUplink(rawfd, rethosconn)
 }
