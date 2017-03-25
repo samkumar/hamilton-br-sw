@@ -35,10 +35,9 @@
 #define RX_TOGGLE (PORT->Group[1].OUTTGL.reg = (1<<23))
 extern ethos_t ethos;
 static msg_t _main_msg_queue[MAIN_QUEUE_SIZE];
-kernel_pid_t start_l7g(void);
+kernel_pid_t start_br(void);
 
 #define CHANNEL_HEARTBEATS 4
-#define CHANNEL_L7G 5
 
 #define HB_TYPE_MCU_TO_PI 1
 
@@ -88,17 +87,13 @@ int main(void)
     gpio_init(D3_PIN, GPIO_OUT);
     gpio_init(D5_PIN, GPIO_OUT);
 
-    // gpio_set(D1_PIN);
-    // gpio_set(D2_PIN);
-    // gpio_set(D3_PIN);
-    // gpio_set(D5_PIN);
     /* we need a message queue for the thread running the shell in order to
      * receive potentially fast incoming networking packets */
     msg_init_queue(_main_msg_queue, MAIN_QUEUE_SIZE);
 
     /* start shell */
-    puts("All up, running the shell now");
-    start_l7g();
+    puts("All up, running the border router now");
+    start_br();
 
     rethos_handler_t hb_h = {.channel = CHANNEL_HEARTBEATS, .cb = heartbeat_callback};
     rethos_register_handler(&ethos, &hb_h);
