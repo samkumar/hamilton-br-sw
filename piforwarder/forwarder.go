@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"net"
@@ -276,30 +277,49 @@ func processStats(bw *bw2bind.BW2Client) {
 	}
 }
 */
-func processIncomingData() {
-	conn, err := net.DialUnix("unixpacket", nil, &net.UnixAddr{Name: "@rethos/7", Net: "unixpacket"})
-	if err != nil {
-		fmt.Printf("heartbeat socket: error: %v\n", err)
-		die()
-	}
-	rawfd, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
-	if err != nil {
-		fmt.Printf("raw socket: error: %v\n", err)
-		die()
-	}
+func ProcessUplink(rawsocket int, rethos *net.UnixConn) {
 	rawdestaddr := syscall.SockaddrInet6{}
 	for {
 		buf := make([]byte, 16*1024)
-		num, _, err := conn.ReadFromUnix(buf)
+		num, _, err := rethos.ReadFromUnix(buf)
 		if err != nil {
-			fmt.Printf("data socket: error: %v\n", err)
+			fmt.Printf("data socket: read: error: %v\n", err)
 			die()
 		}
 		packet := buf[:num]
 
-		err = syscall.Sendto(rawfd, packet, 0, &rawdestaddr)
+		err = syscall.Sendto(rawsocket, packet, 0, &rawdestaddr)
 		if err != nil {
 			fmt.Printf("raw socket: sendto: error: %v\n", err)
+		}
+	}
+}
+
+// Prefix is 2001:470:4889:115/64
+var RouterPrefix = []byte{0x20, 0x01, 0x04, 0x70, 0x48, 0x89, 0x01, 0x15}
+
+func ProcessDownlink(rawsocket int, rethos *net.UnixConn) {
+	packetbuffer := make([]byte, 4096)
+	for {
+		n, _, err := syscall.Recvfrom(rawsocket, packetbuffer, 0)
+		if err != nil {
+			fmt.Printf("raw socket: recvfom: error: %v\n", err)
+		}
+		packet := packetbuffer[:n]
+
+		/* Can't be a valid IPv6 packet if its length is shorter than an IPv6
+		 * header.
+		 */
+		if len(packet) < 40 {
+			continue
+		}
+
+		dstIPaddr := packet[24:40]
+		if bytes.Equal(dstIPaddr[:len(RouterPrefix)], RouterPrefix) {
+			_, err := rethos.Write(packet)
+			if err != nil {
+				fmt.Printf("data socket: write: error: %v\n", err)
+			}
 		}
 	}
 }
@@ -377,5 +397,19 @@ func main() {
 	go processIncomingHeartbeats()
 	//go processWANStatus(bw)
 	//go processStats(bw)
-	processIncomingData()
+
+	rethosconn, err := net.DialUnix("unixpacket", nil, &net.UnixAddr{Name: "@rethos/7", Net: "unixpacket"})
+	if err != nil {
+		fmt.Printf("heartbeat socket: error: %v\n", err)
+		die()
+	}
+
+	rawfd, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
+	if err != nil {
+		fmt.Printf("raw socket: error: %v\n", err)
+		die()
+	}
+
+	go ProcessDownlink(rawfd, rethosconn)
+	ProcessUplink(rawfd, rethosconn)
 }

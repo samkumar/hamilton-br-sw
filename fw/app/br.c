@@ -10,7 +10,7 @@
 #include <rethos.h>
 #include <board.h>
 
-#define CHANNEL_TAP 2
+#define CHANNEL_UPLINK 7
 
 extern ethos_t ethos;
 
@@ -38,7 +38,7 @@ void _handle_incoming_pkt(gnrc_pktsnip_t *p)
         return;
     }
 
-    rethos_send_frame(&ethos, p->data, p->size, CHANNEL_TAP, RETHOS_FRAME_TYPE_DATA);
+    rethos_send_frame(&ethos, p->data, p->size, CHANNEL_UPLINK, RETHOS_FRAME_TYPE_DATA);
 }
 
 void* br_main(void *a)
