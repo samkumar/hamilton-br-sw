@@ -21,15 +21,8 @@ extern ethos_t ethos;
 extern const uint8_t ipv6_addr[16];
 extern const uint8_t ipv6_prefix_bytes;
 
-static gnrc_pktsnip_t* ipv6_packet(gnrc_pktsnip_t* p)
+static gnrc_pktsnip_t* prep_ipv6_hdr(gnrc_pktsnip_t* ipv6_read_only)
 {
-    gnrc_pktsnip_t* ipv6_read_only = NULL;
-    LL_SEARCH_SCALAR(p, ipv6_read_only, type, GNRC_NETTYPE_IPV6);
-    if (ipv6_read_only == NULL) {
-        return NULL;
-    }
-
-    /* This packet is being sent, so we may need to prep the headers... */
     gnrc_pktsnip_t* ipv6 = gnrc_pktbuf_start_write(ipv6_read_only);
     if (ipv6 == NULL) {
         return NULL;
@@ -58,31 +51,37 @@ static gnrc_pktsnip_t* ipv6_packet(gnrc_pktsnip_t* p)
         memcpy(&hdr->src, &ipv6_addr, sizeof(ipv6_addr));
     }
 
+    /* Apparently we may need to calculate the checksum for the upper layer. */
+    gnrc_netreg_calc_csum(payload, ipv6);
+
     return ipv6;
 }
 
-void forward_packet(gnrc_pktsnip_t* tmp)
+gnrc_pktsnip_t* should_send_upstream(gnrc_pktsnip_t* tmp)
 {
     gnrc_pktsnip_t* p = NULL;
     LL_SEARCH_SCALAR(tmp, p, type, GNRC_NETTYPE_IPV6);
 
     if (p == NULL || p->type != GNRC_NETTYPE_IPV6) {
-        return;
+        return NULL;
     }
 
     /* Packet must be big enough to contain an IP header. */
     if (p->size < sizeof(ipv6_hdr_t)) {
-        return;
+        return NULL;
     }
 
     /* Check IP address. */
     ipv6_hdr_t* iphdr = p->data;
 
     if (memcmp(&iphdr->dst, ipv6_addr, ipv6_prefix_bytes) == 0) {
-        /* TODO: actually send this packet on the 802.15.4 link. */
-        return;
+        return NULL;
     }
 
+    return p;
+}
+
+void send_upstream(gnrc_pktsnip_t* p) {
     rethos_start_frame(&ethos, NULL, 0, CHANNEL_UPLINK, RETHOS_FRAME_TYPE_DATA);
     while (p != NULL) {
         rethos_continue_frame(&ethos, p->data, p->size);
@@ -100,6 +99,7 @@ void* br_main(void *a)
     reply.content.value = -ENOTSUP;
     msg_init_queue(_msg_q, Q_SZ);
     gnrc_pktsnip_t* pkt = NULL;
+    gnrc_pktsnip_t* ipv6_read_only = NULL;
     gnrc_pktsnip_t* ipv6 = NULL;
     kernel_pid_t me_pid = thread_getpid();
     gnrc_netreg_entry_t me_reg = GNRC_NETREG_ENTRY_INIT_PID(GNRC_NETREG_DEMUX_CTX_ALL, me_pid);
@@ -109,17 +109,28 @@ void* br_main(void *a)
         switch (msg.type) {
             case GNRC_NETAPI_MSG_TYPE_SND:
                 pkt = msg.content.ptr;
-                ipv6 = ipv6_packet(pkt);
-                if (ipv6 == NULL) {
+                ipv6_read_only = should_send_upstream(pkt);
+                if (ipv6_read_only == NULL) {
+                    gnrc_pktbuf_release(pkt);
                     break;
                 }
-                forward_packet(ipv6);
+                ipv6 = prep_ipv6_hdr(ipv6_read_only);
+                if (ipv6 == NULL) {
+                    gnrc_pktbuf_release(pkt);
+                    break;
+                }
+                send_upstream(ipv6);
                 gnrc_pktbuf_release(ipv6);
                 gnrc_pktbuf_release(pkt);
                 break;
             case GNRC_NETAPI_MSG_TYPE_RCV:
                 pkt = msg.content.ptr;
-                forward_packet(pkt);
+                ipv6_read_only = should_send_upstream(pkt);
+                if (ipv6_read_only == NULL) {
+                    gnrc_pktbuf_release(pkt);
+                    break;
+                }
+                send_upstream(ipv6_read_only);
                 gnrc_pktbuf_release(pkt);
                 break;
              case GNRC_NETAPI_MSG_TYPE_SET:

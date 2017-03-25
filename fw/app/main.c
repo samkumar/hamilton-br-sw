@@ -101,7 +101,7 @@ typedef struct __attribute__((packed))
 int main(void)
 {
     /* TODO: fix this! Very hacky, but works for now. */
-    kernel_pid_t radio_pid = 6;
+    kernel_pid_t radio_pid = 5;
     gnrc_ipv6_netif_t* radio_if = gnrc_ipv6_netif_get(radio_pid);
     assert(radio_if != NULL);
     gnrc_ipv6_netif_add_addr(radio_pid, (const ipv6_addr_t*) &ipv6_addr, ipv6_prefix_bytes << 3, 0);

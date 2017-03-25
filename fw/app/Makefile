@@ -17,6 +17,7 @@ BOARD_INSUFFICIENT_MEMORY := airfy-beacon cc2650stk msb-430 msb-430h pca10000 pc
 ifeq (,$(filter native,$(BOARD)))
 GNRC_NETIF_NUMOF := 2
 USEMODULE += rethos gnrc_netdev2
+#USEMODULE += rtt_stdio
 
 # ethos baudrate can be configured from make command
 ETHOS_BAUDRATE ?= 921600
@@ -42,7 +43,7 @@ USEMODULE += shell_commands
 USEMODULE += ps
 
 # include UHCP client
-USEMODULE += gnrc_uhcpc
+#USEMODULE += gnrc_uhcpc
 
 # Set a custom 802.15.4 channel if needed
 DEFAULT_CHANNEL = 26
