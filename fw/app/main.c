@@ -23,6 +23,11 @@
 #include "msg.h"
 #include "periph/gpio.h"
 #include "rethos.h"
+#include "net/gnrc.h"
+#include "net/gnrc/ipv6.h"
+#include "net/gnrc/udp.h"
+#include "net/gnrc/netif/hdr.h"
+#include "net/gnrc/ipv6/netif.h"
 
 #define MAIN_QUEUE_SIZE     (8)
 
@@ -54,12 +59,26 @@ int wan_status;
 int hb_status;
 uint64_t last_hb;
 
-void heartbeat_callback(ethos_t *dev, uint8_t channel, const uint8_t *data, uint16_t length)
+#define CHANNEL_DOWNLINK 7
+
+// Router is 2001:470:4889:115::1/64
+const uint8_t ipv6_addr[16] = { 0x20, 0x01, 0x04, 0x70, 0x48, 0x89, 0x01, 0x15, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 };
+const uint8_t ipv6_prefix_bytes = 8;
+
+void heartbeat_callback(ethos_t *dev, uint8_t channel, uint8_t *data, uint16_t length)
 {
   if (length >= 4) {
     last_hb = xtimer_now_usec64();
     wan_status = data[1];
   }
+}
+
+void downlink_callback(ethos_t* dev, uint8_t channel, uint8_t* data, uint16_t length)
+{
+    gnrc_pktsnip_t* pkt = gnrc_pktbuf_add(NULL, data, length, GNRC_NETTYPE_IPV6);
+    if (gnrc_netapi_dispatch_receive(GNRC_NETTYPE_IPV6, GNRC_NETREG_DEMUX_CTX_ALL, pkt) == 0) {
+        gnrc_pktbuf_release(pkt);
+    }
 }
 
 typedef struct __attribute__((packed))
@@ -81,6 +100,12 @@ typedef struct __attribute__((packed))
 // 1 0 1 0 1 0 0 0 0
 int main(void)
 {
+    /* TODO: fix this! Very hacky, but works for now. */
+    kernel_pid_t radio_pid = 6;
+    gnrc_ipv6_netif_t* radio_if = gnrc_ipv6_netif_get(radio_pid);
+    assert(radio_if != NULL);
+    gnrc_ipv6_netif_add_addr(radio_pid, (const ipv6_addr_t*) &ipv6_addr, ipv6_prefix_bytes << 3, 0);
+    gnrc_ipv6_netif_set_router(radio_if, true);
 
     gpio_init(D1_PIN, GPIO_OUT);
     gpio_init(D2_PIN, GPIO_OUT);
@@ -97,6 +122,8 @@ int main(void)
 
     rethos_handler_t hb_h = {.channel = CHANNEL_HEARTBEATS, .cb = heartbeat_callback};
     rethos_register_handler(&ethos, &hb_h);
+    rethos_handler_t pkt_h = {.channel = CHANNEL_DOWNLINK, .cb = downlink_callback};
+    rethos_register_handler(&ethos, &pkt_h);
     heartbeat_t hb;
     int count = 0;
     while(1)

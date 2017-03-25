@@ -6,6 +6,7 @@
 #include "net/gnrc/ipv6.h"
 #include "net/gnrc/udp.h"
 #include "net/gnrc/netif/hdr.h"
+#include "net/gnrc/pkt.h"
 #include <checksum/fletcher16.h>
 #include <rethos.h>
 #include <board.h>
@@ -17,11 +18,55 @@ extern ethos_t ethos;
 #define Q_SZ 256
 
 // Prefix is 2001:470:4889:115/64
-const uint8_t ipv6_prefix[] = { 0x20, 0x01, 0x04, 0x70, 0x48, 0x89, 0x01, 0x15 };
+extern const uint8_t ipv6_addr[16];
+extern const uint8_t ipv6_prefix_bytes;
 
-void _handle_incoming_pkt(gnrc_pktsnip_t *p)
+static gnrc_pktsnip_t* ipv6_packet(gnrc_pktsnip_t* p)
 {
-    if (p->type != GNRC_NETTYPE_IPV6) {
+    gnrc_pktsnip_t* ipv6_read_only = NULL;
+    LL_SEARCH_SCALAR(p, ipv6_read_only, type, GNRC_NETTYPE_IPV6);
+    if (ipv6_read_only == NULL) {
+        return NULL;
+    }
+
+    /* This packet is being sent, so we may need to prep the headers... */
+    gnrc_pktsnip_t* ipv6 = gnrc_pktbuf_start_write(ipv6_read_only);
+    if (ipv6 == NULL) {
+        return NULL;
+    }
+    gnrc_pktsnip_t* payload = ipv6->next;
+
+    ipv6_hdr_t *hdr = ipv6->data;
+
+    hdr->len = byteorder_htons(gnrc_pkt_len(payload));
+
+    /* check if e.g. extension header was not already marked */
+    if (hdr->nh == PROTNUM_RESERVED) {
+        hdr->nh = gnrc_nettype_to_protnum(payload->type);
+
+        /* if still reserved: mark no next header */
+        if (hdr->nh == PROTNUM_RESERVED) {
+            hdr->nh = PROTNUM_IPV6_NONXT;
+        }
+    }
+
+    if (hdr->hl == 0) {
+        hdr->hl = GNRC_IPV6_NETIF_DEFAULT_HL;
+    }
+
+    if (ipv6_addr_is_unspecified(&hdr->src)) {
+        memcpy(&hdr->src, &ipv6_addr, sizeof(ipv6_addr));
+    }
+
+    return ipv6;
+}
+
+void forward_packet(gnrc_pktsnip_t* tmp)
+{
+    gnrc_pktsnip_t* p = NULL;
+    LL_SEARCH_SCALAR(tmp, p, type, GNRC_NETTYPE_IPV6);
+
+    if (p == NULL || p->type != GNRC_NETTYPE_IPV6) {
         return;
     }
 
@@ -33,12 +78,17 @@ void _handle_incoming_pkt(gnrc_pktsnip_t *p)
     /* Check IP address. */
     ipv6_hdr_t* iphdr = p->data;
 
-    if (memcmp(&iphdr->dst, ipv6_prefix, sizeof(ipv6_prefix)) == 0) {
+    if (memcmp(&iphdr->dst, ipv6_addr, ipv6_prefix_bytes) == 0) {
         /* TODO: actually send this packet on the 802.15.4 link. */
         return;
     }
 
-    rethos_send_frame(&ethos, p->data, p->size, CHANNEL_UPLINK, RETHOS_FRAME_TYPE_DATA);
+    rethos_start_frame(&ethos, NULL, 0, CHANNEL_UPLINK, RETHOS_FRAME_TYPE_DATA);
+    while (p != NULL) {
+        rethos_continue_frame(&ethos, p->data, p->size);
+        p = p->next;
+    }
+    rethos_end_frame(&ethos);
 }
 
 void* br_main(void *a)
@@ -50,15 +100,26 @@ void* br_main(void *a)
     reply.content.value = -ENOTSUP;
     msg_init_queue(_msg_q, Q_SZ);
     gnrc_pktsnip_t* pkt = NULL;
+    gnrc_pktsnip_t* ipv6 = NULL;
     kernel_pid_t me_pid = thread_getpid();
     gnrc_netreg_entry_t me_reg = GNRC_NETREG_ENTRY_INIT_PID(GNRC_NETREG_DEMUX_CTX_ALL, me_pid);
     gnrc_netreg_register(GNRC_NETTYPE_IPV6 , &me_reg);
     while (1) {
         msg_receive(&msg);
         switch (msg.type) {
+            case GNRC_NETAPI_MSG_TYPE_SND:
+                pkt = msg.content.ptr;
+                ipv6 = ipv6_packet(pkt);
+                if (ipv6 == NULL) {
+                    break;
+                }
+                forward_packet(ipv6);
+                gnrc_pktbuf_release(ipv6);
+                gnrc_pktbuf_release(pkt);
+                break;
             case GNRC_NETAPI_MSG_TYPE_RCV:
                 pkt = msg.content.ptr;
-                _handle_incoming_pkt(pkt);
+                forward_packet(pkt);
                 gnrc_pktbuf_release(pkt);
                 break;
              case GNRC_NETAPI_MSG_TYPE_SET:
