@@ -364,6 +364,11 @@ func printStats() {
 		fmt.Printf("published %d ok, %d err\n", pubsucc, puberror)
 	}
 }
+
+func htons(x uint16) uint16 {
+	return ((x & 0x00FF) << 8) | ((x & 0xFF00) >> 8)
+}
+
 func main() {
 	embd.InitGPIO()
 	defer embd.CloseGPIO()
@@ -415,7 +420,7 @@ func main() {
 	/* Raw sockets aren't enough for receiving packets, since that ties me to
 	 * only one IP protocol, whereas I want to forward all IP packets.
 	 */
-	packetfd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, syscall.ETH_P_IPV6)
+	packetfd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, int(htons(uint16(syscall.ETH_P_IPV6))))
 	if err != nil {
 		fmt.Printf("packet socket: error: %v\n", err)
 		die()
