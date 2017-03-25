@@ -8,7 +8,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/immesys/wd"
 	"github.com/kidoman/embd"
 	_ "github.com/kidoman/embd/host/rpi"
 )
@@ -106,7 +105,7 @@ func processIncomingHeartbeats() {
 		}
 		if num >= 12 && binary.LittleEndian.Uint32(buf) == HbTypeMcuToPi {
 			gotHeartbeat <- true
-			go wd.RLKick(5*time.Second, "410.br."+BRName+".mcu", 30)
+			//go wd.RLKick(5*time.Second, "410.br."+BRName+".mcu", 30)
 		} else {
 			hbokay <- false
 		}
@@ -117,6 +116,7 @@ const ResetInterval = 30 * time.Second
 
 var hasInternet bool
 
+/*
 func checkInternet() {
 	for {
 		err := wd.Kick("410.br."+BRName+".wan", 30)
@@ -143,7 +143,7 @@ func checkInternet() {
 		time.Sleep(10 * time.Second)
 	}
 }
-
+*/
 /*
 func processWANStatus(bw *bw2bind.BW2Client) {
 	lasterr := puberror
@@ -349,7 +349,7 @@ func main() {
 	LedChan = make(chan int, 1)
 	WanChan = make(chan int, 1)
 	go LedAnim(LedChan)
-	go checkInternet()
+	//go checkInternet()
 	go printStats()
 	//TODO set the Pi Led OFF before you do
 	//anything that could cause exit
