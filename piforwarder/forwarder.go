@@ -288,6 +288,14 @@ func ProcessUplink(rawsocket int, rethos *net.UnixConn) {
 		}
 		packet := buf[:num]
 
+		/* Must contain at least a full IPv6 header */
+		if len(packet) < 40 {
+			continue
+		}
+
+		dstip := packet[24:40]
+		copy(rawdestaddr.Addr[:], dstip)
+
 		err = syscall.Sendto(rawsocket, packet, 0, &rawdestaddr)
 		if err != nil {
 			fmt.Printf("raw socket: sendto: error: %v\n", err)
