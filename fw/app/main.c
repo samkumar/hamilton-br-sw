@@ -97,14 +97,27 @@ typedef struct __attribute__((packed))
   uint32_t tx_retries;
 } heartbeat_t;
 
+kernel_pid_t get_radio_pid(void) {
+    kernel_pid_t ifs[GNRC_NETIF_NUMOF];
+    size_t ifnum = gnrc_netif_get(ifs);
+    for (unsigned i = 0; i < ifnum; i++) {
+        gnrc_ipv6_netif_t *ipv6_if = gnrc_ipv6_netif_get(ifs[i]);
+        if ((ipv6_if != NULL) && (ipv6_if->flags & GNRC_IPV6_NETIF_FLAGS_SIXLOWPAN)) {
+            /* always take the first 6LoWPAN interface we can find */
+            return ipv6_if->pid;
+        }
+    }
+    return 0;
+}
+
 // X X X X X X X X X
 // 1 0 0 0 0 0 0 0 0
 // 1 0 1 0 0 0 0 0 0
 // 1 0 1 0 1 0 0 0 0
 int main(void)
 {
-    /* TODO: fix this! Very hacky, but works for now. */
-    kernel_pid_t radio_pid = 5;
+    kernel_pid_t radio_pid = get_radio_pid();
+    assert(radio_pid != 0);
     gnrc_ipv6_netif_t* radio_if = gnrc_ipv6_netif_get(radio_pid);
     assert(radio_if != NULL);
     gnrc_ipv6_netif_add_addr(radio_pid, (const ipv6_addr_t*) &ipv6_addr, ipv6_prefix_bytes << 3, 0);

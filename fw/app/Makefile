@@ -16,17 +16,22 @@ BOARD_INSUFFICIENT_MEMORY := airfy-beacon cc2650stk msb-430 msb-430h pca10000 pc
 # UART, but not on native, as native has a tap interface towards the host.
 ifeq (,$(filter native,$(BOARD)))
 GNRC_NETIF_NUMOF := 2
-USEMODULE += rethos gnrc_netdev2
-#USEMODULE += rtt_stdio
+USEMODULE += rethos
+USEMODULE += gnrc_netdev2
+CFLAGS += -DRTT_STDIO_DISABLE_STDIN
+USEMODULE += rtt_stdio
+
+USEMODULE += at86rf233
 
 # ethos baudrate can be configured from make command
 ETHOS_BAUDRATE ?= 921600
-CFLAGS += '-DETHOS_UART=UART_DEV(0)' -DETHOS_BAUDRATE=$(ETHOS_BAUDRATE) -DUSE_ETHOS_FOR_STDIO
+CFLAGS += '-DETHOS_UART=UART_DEV(0)' -DETHOS_BAUDRATE=$(ETHOS_BAUDRATE)
 FEATURES_REQUIRED += periph_uart
 endif
 
 # Include packages that pull up and auto-init the link layer.
 # NOTE: 6LoWPAN will be included if IEEE802.15.4 devices are present
+USEMODULE += gnrc_ipv6_autoconf_onehop
 USEMODULE += gnrc_netdev_default
 USEMODULE += gnrc_dutymac
 USEMODULE += netdev2_eth
