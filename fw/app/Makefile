@@ -28,10 +28,9 @@ USEMODULE += at86rf233
 CFLAGS += -DHAMILTON_BORDER_ROUTER_ADDRESS=\"2001:470:4889:115::1\"
 
 # Unset this for the Border Router... though you also would need to use the
-# Border Router kernel (which is needed to work properly with the samr21)
+# Border Router kernel (which is needed to work properly with the samr21 and
+# rethos).
 CFLAGS += -DI_AM_HAMILTON_BORDER_ROUTER
-
-USEMODULE += gnrc_ipv6_router
 
 # ethos baudrate can be configured from make command
 ETHOS_BAUDRATE ?= 921600

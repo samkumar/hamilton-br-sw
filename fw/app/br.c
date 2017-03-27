@@ -101,7 +101,9 @@ gnrc_pktsnip_t* should_send_upstream(gnrc_pktsnip_t* tmp)
 void send_upstream(gnrc_pktsnip_t* p) {
     rethos_start_frame(&ethos, NULL, 0, CHANNEL_UPLINK, RETHOS_FRAME_TYPE_DATA);
     while (p != NULL) {
-        rethos_continue_frame(&ethos, p->data, p->size);
+        if (p->type != GNRC_NETTYPE_NETIF) {
+            rethos_continue_frame(&ethos, p->data, p->size);
+        }
         p = p->next;
     }
     rethos_end_frame(&ethos);
