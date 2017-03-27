@@ -5,7 +5,7 @@ APPLICATION = rethos-br
 BOARD = samr21-xpro
 
 # This has to be the absolute path to the RIOT base directory:
-RIOTBASE = $(CURDIR)/../RIOT
+RIOTBASE ?= $(CURDIR)/../RIOT-OS
 
 BOARD_INSUFFICIENT_MEMORY := airfy-beacon cc2650stk msb-430 msb-430h pca10000 pca10005 \
                              nrf51dongle nrf6310 nucleo-f103 nucleo-f334 \
@@ -46,8 +46,7 @@ USEMODULE += gnrc_dutymac
 USEMODULE += netdev2_eth
 USEMODULE += auto_init_gnrc_netif
 USEMODULE += gnrc_sixlowpan_frag
-# Specify the mandatory networking modules for 6LoWPAN border router
-# USEMODULE += gnrc_sixlowpan_border_router_default
+
 # Add forwarding table
 USEMODULE += fib
 # Additional networking modules that can be dropped if not needed
@@ -57,8 +56,6 @@ USEMODULE += shell
 USEMODULE += shell_commands
 USEMODULE += ps
 
-# include UHCP client
-#USEMODULE += gnrc_uhcpc
 
 # Comment this out to disable code in RIOT that does safety checking
 # which is not needed in a production environment but helps in the
