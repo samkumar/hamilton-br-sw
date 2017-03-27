@@ -17,11 +17,21 @@ BOARD_INSUFFICIENT_MEMORY := airfy-beacon cc2650stk msb-430 msb-430h pca10000 pc
 ifeq (,$(filter native,$(BOARD)))
 GNRC_NETIF_NUMOF := 2
 USEMODULE += rethos
+USEMODULE += random
 USEMODULE += gnrc_netdev2
 CFLAGS += -DRTT_STDIO_DISABLE_STDIN
 USEMODULE += rtt_stdio
 
 USEMODULE += at86rf233
+
+# Prefix length is assumed to be 64
+CFLAGS += -DHAMILTON_BORDER_ROUTER_ADDRESS=\"2001:470:4889:115::1\"
+
+# Unset this for the Border Router... though you also would need to use the
+# Border Router kernel (which is needed to work properly with the samr21)
+CFLAGS += -DI_AM_HAMILTON_BORDER_ROUTER
+
+USEMODULE += gnrc_ipv6_router
 
 # ethos baudrate can be configured from make command
 ETHOS_BAUDRATE ?= 921600
@@ -36,8 +46,9 @@ USEMODULE += gnrc_netdev_default
 USEMODULE += gnrc_dutymac
 USEMODULE += netdev2_eth
 USEMODULE += auto_init_gnrc_netif
+USEMODULE += gnrc_sixlowpan_frag
 # Specify the mandatory networking modules for 6LoWPAN border router
-USEMODULE += gnrc_sixlowpan_border_router_default
+# USEMODULE += gnrc_sixlowpan_border_router_default
 # Add forwarding table
 USEMODULE += fib
 # Additional networking modules that can be dropped if not needed

@@ -18,7 +18,7 @@ extern ethos_t ethos;
 #define Q_SZ 256
 
 // Prefix is 2001:470:4889:115/64
-extern const uint8_t ipv6_addr[16];
+extern ipv6_addr_t ipv6_addr;
 extern const uint8_t ipv6_prefix_bytes;
 
 static gnrc_pktsnip_t* prep_ipv6_hdr(gnrc_pktsnip_t** pkt, gnrc_pktsnip_t* ipv6_read_only)
@@ -91,7 +91,7 @@ gnrc_pktsnip_t* should_send_upstream(gnrc_pktsnip_t* tmp)
     /* Check IP address. */
     ipv6_hdr_t* iphdr = p->data;
 
-    if (memcmp(&iphdr->dst, ipv6_addr, ipv6_prefix_bytes) == 0) {
+    if (memcmp(&iphdr->dst, &ipv6_addr, ipv6_prefix_bytes) == 0) {
         return NULL;
     }
 
