@@ -34,8 +34,11 @@ const BadAge = 5 * time.Minute
 
 var WanChan chan int
 
-var puberror uint64
-var pubsucc uint64
+// var puberror uint64
+// var pubsucc uint64
+
+var forwardedUplink uint64
+var forwardedDownlink uint64
 
 var BRName string
 
@@ -300,6 +303,7 @@ func ProcessUplink(rawsocket int, rethos *net.UnixConn) {
 		if err != nil {
 			fmt.Printf("raw socket: sendto: error: %v\n", err)
 		}
+		forwardedUplink++
 	}
 }
 
@@ -331,6 +335,7 @@ func ProcessDownlink(rawsocket int, rethos *net.UnixConn) {
 				fmt.Printf("data socket: write: error: %v\n", err)
 			}
 		}
+		forwardedDownlink++
 	}
 }
 
@@ -369,7 +374,7 @@ func LedAnim(ledchan chan int) {
 func printStats() {
 	for {
 		time.Sleep(10 * time.Second)
-		fmt.Printf("published %d ok, %d err\n", pubsucc, puberror)
+		fmt.Printf("forwarded %d packets uplink, %d packets downlink\n", forwardedUplink, forwardedDownlink)
 	}
 }
 
