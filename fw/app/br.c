@@ -90,7 +90,9 @@ gnrc_pktsnip_t* should_send_upstream(gnrc_pktsnip_t* tmp)
 
     /* Check IP address. */
     ipv6_hdr_t* iphdr = p->data;
-
+    if (!ipv6_addr_is_global(&iphdr->dst)) {
+        return NULL;
+    }
     if (memcmp(&iphdr->dst, &ipv6_addr, ipv6_prefix_bytes) == 0) {
         return NULL;
     }

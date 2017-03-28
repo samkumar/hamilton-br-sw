@@ -99,7 +99,7 @@ func processIncomingHeartbeats() {
 			}
 		}
 	}()
-	fmt.Println("hearbeat socket: connected ok")
+	fmt.Println("heartbeat socket: connected ok")
 	for {
 		buf := make([]byte, 16*1024)
 		num, _, err := conn.ReadFromUnix(buf)
@@ -334,8 +334,8 @@ func ProcessDownlink(rawsocket int, rethos *net.UnixConn) {
 			if err != nil {
 				fmt.Printf("data socket: write: error: %v\n", err)
 			}
+			forwardedDownlink++
 		}
-		forwardedDownlink++
 	}
 }
 
