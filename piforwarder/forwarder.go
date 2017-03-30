@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/binary"
 	"fmt"
 	"net"
 	"os"
@@ -46,6 +45,9 @@ func die() {
 	embd.CloseGPIO()
 	os.Exit(1)
 }
+
+var stats []byte
+
 func processIncomingHeartbeats() {
 	conn, err := net.DialUnix("unixpacket", nil, &net.UnixAddr{Name: "@rethos/4", Net: "unixpacket"})
 	if err != nil {
@@ -107,9 +109,11 @@ func processIncomingHeartbeats() {
 			fmt.Printf("heartbeat socket: error: %v\n", err)
 			die()
 		}
-		if num >= 12 && binary.LittleEndian.Uint32(buf) == HbTypeMcuToPi {
+		if num >= 12 {
 			gotHeartbeat <- true
 			//go wd.RLKick(5*time.Second, "410.br."+BRName+".mcu", 30)
+			stats = make([]byte, num)
+			copy(stats, buf[:num])
 		} else {
 			hbokay <- false
 		}
@@ -380,6 +384,27 @@ func printStats() {
 
 func htons(x uint16) uint16 {
 	return ((x & 0x00FF) << 8) | ((x & 0xFF00) >> 8)
+}
+
+func serveStats() {
+	sock, err := net.Listen("tcp", ":4992")
+	if err != nil {
+		fmt.Println("listen:", err.Error())
+		os.Exit(1)
+	}
+	defer sock.Close()
+	for {
+		conn, err := sock.Accept()
+		if err != nil {
+			fmt.Println("accept:", err.Error())
+			os.Exit(1)
+		}
+		// Handle connections in a new goroutine.
+		if stats != nil {
+			conn.Write(stats)
+		}
+		conn.Close()
+	}
 }
 
 func main() {
