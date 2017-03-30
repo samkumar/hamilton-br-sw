@@ -464,6 +464,8 @@ func main() {
 		die()
 	}
 
+	go serveStats()
+
 	go ProcessDownlink(packetfd, rethosconn)
 	ProcessUplink(rawfd, rethosconn)
 }
