@@ -39,7 +39,7 @@
 
 #define TX_TOGGLE (PORT->Group[0].OUTTGL.reg = (1<<27))
 #define RX_TOGGLE (PORT->Group[1].OUTTGL.reg = (1<<23))
-extern ethos_t ethos;
+extern ethos_t rethos;
 static msg_t _main_msg_queue[MAIN_QUEUE_SIZE];
 kernel_pid_t start_br(void);
 
@@ -68,10 +68,10 @@ const uint8_t ipv6_prefix_bytes = 8;
 
 void heartbeat_callback(ethos_t *dev, uint8_t channel, uint8_t *data, uint16_t length)
 {
-  if (length >= 4) {
-    last_hb = xtimer_now_usec64();
-    wan_status = data[1];
-  }
+    if (length >= 4) {
+        last_hb = xtimer_now_usec64();
+        wan_status = data[1];
+    }
 }
 
 void downlink_callback(ethos_t* dev, uint8_t channel, uint8_t* data, uint16_t length)
@@ -178,9 +178,9 @@ int main(void)
     start_br();
 
     rethos_handler_t hb_h = {.channel = CHANNEL_HEARTBEATS, .cb = heartbeat_callback};
-    rethos_register_handler(&ethos, &hb_h);
+    rethos_register_handler(&rethos, &hb_h);
     rethos_handler_t pkt_h = {.channel = CHANNEL_DOWNLINK, .cb = downlink_callback};
-    rethos_register_handler(&ethos, &pkt_h);
+    rethos_register_handler(&rethos, &pkt_h);
     heartbeat_t hb;
     int count = 0;
     while(1)
@@ -233,14 +233,14 @@ int main(void)
       {
         hb.type = HB_TYPE_MCU_TO_PI;
         hb.uptime = xtimer_now_usec64();
-        hb.rx_crc_fail = ethos.stats_rx_cksum_fail;
-        hb.rx_bytes = ethos.stats_rx_bytes;
-        hb.rx_frames = ethos.stats_rx_frames;
-        hb.tx_frames = ethos.stats_tx_frames;
-        hb.tx_bytes = ethos.stats_tx_bytes;
-        hb.tx_retries = ethos.stats_tx_retries;
+        hb.rx_crc_fail = rethos.stats_rx_cksum_fail;
+        hb.rx_bytes = rethos.stats_rx_bytes;
+        hb.rx_frames = rethos.stats_rx_frames;
+        hb.tx_frames = rethos.stats_tx_frames;
+        hb.tx_bytes = rethos.stats_tx_bytes;
+        hb.tx_retries = rethos.stats_tx_retries;
         hb.buildver = BUILDVER;
-        rethos_send_frame(&ethos, (uint8_t*)&hb, sizeof(hb), CHANNEL_HEARTBEATS, RETHOS_FRAME_TYPE_DATA);
+        rethos_send_frame(&rethos, (uint8_t*)&hb, sizeof(hb), CHANNEL_HEARTBEATS, RETHOS_FRAME_TYPE_DATA);
       }
     }
     /* should be never reached */

@@ -32,9 +32,9 @@ CFLAGS += -DHAMILTON_BORDER_ROUTER_ADDRESS=\"2001:470:4889:115::1\"
 # rethos).
 CFLAGS += -DI_AM_HAMILTON_BORDER_ROUTER
 
-# ethos baudrate can be configured from make command
-ETHOS_BAUDRATE ?= 921600
-CFLAGS += '-DETHOS_UART=UART_DEV(0)' -DETHOS_BAUDRATE=$(ETHOS_BAUDRATE)
+# rethos baudrate can be configured from make command
+RETHOS_BAUDRATE ?= 921600
+CFLAGS += '-DRETHOS_UART=UART_DEV(0)' -DRETHOS_BAUDRATE=$(RETHOS_BAUDRATE)
 FEATURES_REQUIRED += periph_uart
 endif
 
