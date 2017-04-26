@@ -74,8 +74,17 @@ void heartbeat_callback(ethos_t *dev, uint8_t channel, uint8_t *data, uint16_t l
     }
 }
 
+#ifdef COLLECT_TCP_STATS
+#include "tcp_benchmark/common.h"
+struct benchmark_stats stats = {0};
+#else
+heartbeat_t hb;
+#endif
 void downlink_callback(ethos_t* dev, uint8_t channel, uint8_t* data, uint16_t length)
 {
+#ifdef COLLECT_TCP_STATS
+    stats.hamilton_tcp_segs_received++;
+#endif
     gnrc_pktsnip_t* pkt = gnrc_pktbuf_add(NULL, data, length, GNRC_NETTYPE_IPV6);
     if (pkt == NULL) {
         return;
@@ -181,7 +190,6 @@ int main(void)
     rethos_register_handler(&rethos, &hb_h);
     rethos_handler_t pkt_h = {.channel = CHANNEL_DOWNLINK, .cb = downlink_callback};
     rethos_register_handler(&rethos, &pkt_h);
-    heartbeat_t hb;
     int count = 0;
     while(1)
     {
@@ -231,6 +239,9 @@ int main(void)
       }
       if (count % 5 == 0)
       {
+#ifdef COLLECT_TCP_STATS
+        rethos_send_frame(&rethos, (uint8_t*) &stats, sizeof(stats), CHANNEL_HEARTBEATS, RETHOS_FRAME_TYPE_DATA);
+#else
         hb.type = HB_TYPE_MCU_TO_PI;
         hb.uptime = xtimer_now_usec64();
         hb.rx_crc_fail = rethos.stats_rx_cksum_fail;
@@ -240,7 +251,8 @@ int main(void)
         hb.tx_bytes = rethos.stats_tx_bytes;
         hb.tx_retries = rethos.stats_tx_retries;
         hb.buildver = BUILDVER;
-        rethos_send_frame(&rethos, (uint8_t*)&hb, sizeof(hb), CHANNEL_HEARTBEATS, RETHOS_FRAME_TYPE_DATA);
+        rethos_send_frame(&rethos, (uint8_t*) &hb, sizeof(hb), CHANNEL_HEARTBEATS, RETHOS_FRAME_TYPE_DATA);
+#endif
       }
     }
     /* should be never reached */

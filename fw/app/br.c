@@ -21,6 +21,11 @@ extern ethos_t rethos;
 extern ipv6_addr_t ipv6_addr;
 extern const uint8_t ipv6_prefix_bytes;
 
+#ifdef COLLECT_TCP_STATS
+#include "tcp_benchmark/common.h"
+extern struct benchmark_stats stats;
+#endif
+
 static gnrc_pktsnip_t* prep_ipv6_hdr(gnrc_pktsnip_t** pkt, gnrc_pktsnip_t* ipv6_read_only)
 {
     gnrc_pktsnip_t* p = *pkt;
@@ -101,6 +106,9 @@ gnrc_pktsnip_t* should_send_upstream(gnrc_pktsnip_t* tmp)
 }
 
 void send_upstream(gnrc_pktsnip_t* p) {
+#ifdef COLLECT_TCP_STATS
+    stats.hamilton_tcp_segs_sent++;
+#endif
     rethos_start_frame(&rethos, NULL, 0, CHANNEL_UPLINK, RETHOS_FRAME_TYPE_DATA);
     while (p != NULL) {
         if (p->type != GNRC_NETTYPE_NETIF) {

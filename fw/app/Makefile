@@ -24,6 +24,8 @@ USEMODULE += rtt_stdio
 
 USEMODULE += at86rf233
 
+CFLAGS += -DCOLLECT_TCP_STATS
+
 # Prefix length is assumed to be 64
 CFLAGS += -DHAMILTON_BORDER_ROUTER_ADDRESS=\"2001:470:4889:115::1\"
 
