@@ -34,22 +34,45 @@
 #include "cmsis/samr21/include/component/wdt.h"
 #include "cmsis/samr21/include/instance/wdt.h"
 
+#define PAC0_BASE 0x40000000
+#define WDT_BASE 0x40001000
+
 void clear_watchdog(void) {
-    volatile WDT_CLEAR_Type* wdt_clear = (volatile WDT_CLEAR_Type*) &REG_WDT_CLEAR;
-    wdt_clear->reg = 0xA5;
+    printf("clearing\n");
+
+    volatile uint8_t* wdt_clear = (volatile uint8_t*) 0x40001008;
+    *wdt_clear = 0xA4;
+
+    //volatile WDT_CLEAR_Type* wdt_clear = (volatile WDT_CLEAR_Type*) &REG_WDT_CLEAR;
+    //wdt_clear->reg = 0xA5;
 }
 
 void setup_watchdog(void) {
     /* Setup GCLK_WDT at 1 */
-    GCLK->GENDIV.reg  = (GCLK_GENDIV_ID(3)  | GCLK_GENDIV_DIV(255));
-    GCLK->GENCTRL.reg = (GCLK_GENCTRL_ID(2) | GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_OSCULP32K);
-    while (GCLK->STATUS.bit.SYNCBUSY) {}
+    // GCLK->GENDIV.reg  = (GCLK_GENDIV_ID(3)  | GCLK_GENDIV_DIV(7));
+    // GCLK->GENCTRL.reg = (GCLK_GENCTRL_ID(3) | GCLK_GENCTRL_GENEN | GCLK_GENCTRL_RUNSTDBY | GCLK_GENCTRL_SRC_OSCULP32K);
+    // while (GCLK->STATUS.bit.SYNCBUSY) {}
+    //
+    // GCLK->CLKCTRL.reg = (GCLK_CLKCTRL_GEN(3) | GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_ID(GCLK_CLKCTRL_ID_WDT_Val));
+    // while (GCLK->STATUS.bit.SYNCBUSY) {}
 
-    volatile WDT_CTRL_Type* wdt_ctrl = (volatile WDT_CTRL_Type*) &REG_WDT_CTRL;
-    wdt_ctrl->bit.ALWAYSON = 1;
+    /* Clear Write-Protect for the WDT. */
+    //volatile uint8_t* wpclr = (volatile uint8_t*) 0x40000000;
+    //*wpclr = 0x10;
 
-    volatile WDT_CONFIG_Type* wdt_config = (volatile WDT_CONFIG_Type*) &REG_WDT_CONFIG;
-    wdt_config->bit.PER = 0xB;
+    /* Set up the WDT to be always running. */
+
+    volatile uint8_t* wdt_ctrl = (volatile uint8_t*) 0x40001000;
+    *wdt_ctrl = 0x80;
+
+    volatile uint8_t* wdt_config = (volatile uint8_t*) 0x40001001;
+    *wdt_config = 0x0B;
+
+    //volatile WDT_CTRL_Type* wdt_ctrl = (volatile WDT_CTRL_Type*) &REG_WDT_CTRL;
+    //wdt_ctrl->bit.ALWAYSON = 1;
+
+    //volatile WDT_CONFIG_Type* wdt_config = (volatile WDT_CONFIG_Type*) &REG_WDT_CONFIG;
+    //wdt_config->bit.PER = 0xB;
 }
 
 #define MAIN_QUEUE_SIZE     (8)
@@ -189,10 +212,10 @@ int main(void)
 
     printf("My IP address is %s\n", ipstr);
 
-    gnrc_ipv6_netif_t* radio_if = gnrc_ipv6_netif_get(radio_pid);
-    assert(radio_if != NULL);
+    //gnrc_ipv6_netif_t* radio_if = gnrc_ipv6_netif_get(radio_pid);
+    //assert(radio_if != NULL);
     gnrc_ipv6_netif_add_addr(radio_pid, &ipv6_addr, ipv6_prefix_bytes << 3, 0);
-    gnrc_ipv6_netif_set_router(radio_if, true);
+    //gnrc_ipv6_netif_set_router(radio_if, true);
 
     gpio_init(D1_PIN, GPIO_OUT);
     gpio_init(D2_PIN, GPIO_OUT);
