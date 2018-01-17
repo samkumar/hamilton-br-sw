@@ -11,7 +11,7 @@
 #include <rethos.h>
 #include <board.h>
 
-#define CHANNEL_UPLINK 7
+#define CHANNEL_UPLINK 3
 
 extern ethos_t rethos;
 
@@ -151,8 +151,8 @@ void* br_main(void *a)
                 send_upstream(ipv6_read_only);
                 gnrc_pktbuf_release(pkt);
                 break;
-             case GNRC_NETAPI_MSG_TYPE_SET:
-             case GNRC_NETAPI_MSG_TYPE_GET:
+            case GNRC_NETAPI_MSG_TYPE_SET:
+            case GNRC_NETAPI_MSG_TYPE_GET:
                 msg_reply(&msg, &reply);
                 break;
             default:
@@ -161,6 +161,7 @@ void* br_main(void *a)
 
     }
 }
+
 static kernel_pid_t br_pid = 0;
 static char br_stack[1024];
 kernel_pid_t start_br(void)

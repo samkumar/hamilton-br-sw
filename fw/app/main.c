@@ -106,7 +106,7 @@ uint64_t last_hb;
 #define CHANNEL_DOWNLINK 7
 
 ipv6_addr_t ipv6_addr;
-const uint8_t ipv6_prefix_bytes = 8;
+uint8_t ipv6_prefix_bytes = 8;
 
 void heartbeat_callback(ethos_t *dev, uint8_t channel, uint8_t *data, uint16_t length)
 {
@@ -124,6 +124,22 @@ void downlink_callback(ethos_t* dev, uint8_t channel, uint8_t* data, uint16_t le
     }
     if (gnrc_netapi_dispatch_receive(GNRC_NETTYPE_IPV6, GNRC_NETREG_DEMUX_CTX_ALL, pkt) == 0) {
         gnrc_pktbuf_release(pkt);
+    }
+}
+
+void address_callback(ethos_t* dev, uint8_t channel, uint8_t* data, uint16_t length)
+{
+    if (length == 18 && data[0] == 0x02) {
+        memcpy(&ipv6_addr, &data[1], 16);
+        ipv6_prefix_bytes = data[17];
+
+        /*kernel_pid_t radio_pid = get_6lowpan_pid();
+        assert(radio_pid != 0);
+        if (get_ipv6_addr_from_ll(&ipv6_addr, radio_pid) != 0) {
+             printf("Could not set IPv6 address from link layer\n");
+        }*/
+
+        /* Additional Thread stuff */
     }
 }
 
