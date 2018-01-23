@@ -108,18 +108,16 @@ int main(int argc, char** argv) {
 
     int ssock = -1;
     for (;;) {
+        int first_fd = msock;
+        int second_fd = (ssock == -1) ? lsock : ssock;
+        int max_fd = (first_fd < second_fd) ? second_fd : first_fd;
+
         fd_set read_fds;
         FD_ZERO(&read_fds);
-
+        FD_SET(msock, &read_fds);
         FD_SET(msock, &read_fds);
 
-        if (ssock == -1) {
-            FD_SET(lsock, &read_fds);
-        } else {
-            FD_SET(ssock, &read_fds);
-        }
-
-        int rv = select(2, &read_fds, NULL, NULL, NULL);
+        int rv = select(max_fd + 1, &read_fds, NULL, NULL, NULL);
         if (rv == -1) {
             check_fatal_error("Could not wait for event");
         }
