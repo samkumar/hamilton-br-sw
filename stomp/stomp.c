@@ -75,18 +75,31 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    const char* message_socket_name = argv[1];
-    const char* serial_socket_name;
+    int lsock = -1;
+    int ssock = -1;
 
-    if (argc == 3) {
-        message_socket_name = argv[2];
-    } else {
-        serial_socket_name = "stomp";
-    }
+    /* Always the same as ssock, except when ssock is STDIN_FILENO. */
+    int ssock_output = -1;
 
     struct sockaddr_un addr;
     size_t addr_len;
 
+    if (argc == 3) {
+        const char* serial_socket_name = argv[2];
+
+        printf("Listening on %s...\n", serial_socket_name);
+        lsock = socket_un_create();
+        addr_len = sockaddr_un_fill(&addr, serial_socket_name);
+        if (bind(lsock, (struct sockaddr*) &addr, addr_len) == -1) {
+            check_fatal_error("Could not bind serial listen socket");
+        }
+    } else {
+        printf("No serial socket provided; using stdin/stdout\n");
+        ssock = STDIN_FILENO;
+        ssock_output = STDOUT_FILENO;
+    }
+
+    const char* message_socket_name = argv[1];
     printf("Connecting to %s...\n", message_socket_name);
     int msock = socket_un_create();
     addr_len = sockaddr_un_fill(&addr, message_socket_name);
@@ -95,18 +108,10 @@ int main(int argc, char** argv) {
     }
     printf("Done connecting to %s.\n", message_socket_name);
 
-    printf("Listening on %s...\n", serial_socket_name);
-    int lsock = socket_un_create();
-    addr_len = sockaddr_un_fill(&addr, serial_socket_name);
-    if (bind(lsock, (struct sockaddr*) &addr, addr_len) == -1) {
-        check_fatal_error("Could not bind serial listen socket");
-    }
-
     /* State variables for reading messages. */
     int message_header_bytes_left = 4;
     uint32_t message_body_bytes_left = 0;
 
-    int ssock = -1;
     for (;;) {
         int first_fd = msock;
         int second_fd = (ssock == -1) ? lsock : ssock;
@@ -114,8 +119,8 @@ int main(int argc, char** argv) {
 
         fd_set read_fds;
         FD_ZERO(&read_fds);
-        FD_SET(msock, &read_fds);
-        FD_SET(msock, &read_fds);
+        FD_SET(first_fd, &read_fds);
+        FD_SET(second_fd, &read_fds);
 
         int rv = select(max_fd + 1, &read_fds, NULL, NULL, NULL);
         if (rv == -1) {
@@ -147,7 +152,7 @@ int main(int argc, char** argv) {
                     return 0;
                 } else {
                     if (ssock != -1) {
-                        checked_write(ssock, buffer, bytes_read);
+                        checked_write(ssock_output, buffer, bytes_read);
                     }
                     message_body_bytes_left -= bytes_read;
                     if (message_body_bytes_left == 0) {
@@ -164,6 +169,7 @@ int main(int argc, char** argv) {
                 if (ssock == -1) {
                     check_fatal_error("Could not accept serial connection");
                 }
+                ssock_output = ssock;
             }
         } else if (FD_ISSET(ssock, &read_fds)) {
             // Transfer bytes from ssock to msock, chunked as a message
@@ -176,6 +182,10 @@ int main(int argc, char** argv) {
                     check_fatal_error("Could not close serial socket");
                 }
                 ssock = -1;
+                if (lsock == -1) {
+                    printf("Stdin was closed\n");
+                    return 0;
+                }
             } else {
                 uint32_t header = (uint32_t) bytes_read;
                 header = htobe32(header);
